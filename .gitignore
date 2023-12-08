@@ -1,0 +1,10 @@
+# Inputs
+*.txt
+
+# Compilation byproducts
+*.o
+*.cmi
+*.cmx
+
+# Compilation products
+*.exe
