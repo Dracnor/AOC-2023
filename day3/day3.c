@@ -116,8 +116,8 @@ int part1(void) {
     while (col < NB_COL) {
       if (is_part_number(lgn, col)) {
         sum += get_integer(lgn, col);
-        col += left_right_len[lgn][col].right; // skip the rest of this integer
       }
+      col += left_right_len[lgn][col].right; // skip the rest of this integer
       col++; 
     }
   }
