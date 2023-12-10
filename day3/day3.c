@@ -114,8 +114,11 @@ int part1(void) {
   for (int lgn = 0; lgn < NB_LGN; lgn++) {
     int col = 0;
     while (col < NB_COL) {
-      if (is_part_number(lgn, col)) sum += get_integer(lgn, col);
-      col += left_right_len[lgn][col].right + 1;
+      if (is_part_number(lgn, col)) {
+        sum += get_integer(lgn, col);
+        col += left_right_len[lgn][col].right; // skip the rest of this integer
+      }
+      col++; 
     }
   }
   return sum;
@@ -126,31 +129,21 @@ int part1(void) {
 
 /** Computes the gear ratio of lgn x col */
 int gear_ratio(int lgn, int col) {
-  bool has_int[3][3] = {}; /* top left -- top center -- top right
-                              left     --     X      -- right
-                           bottom left -- bot center -- bottom right */
-// schematic[i][j] is at has_int[i-row_X+1][j-col_X+1]
+  int nb_gear = 0;
+  int prod = 1;
 
+  // (i,j) will be the indexes of the square centered on lgn x col
   for (int i = max(0, lgn-1); i <= min(NB_LGN-1, lgn+1); i++) {
     int j = max(0, col-1);
     while (j <= min(NB_COL-1, col +1)) {
       if (is_digit(schematic[i][j])) {
-        has_int[i-lgn+1][j-col+1] = true;
-        j += left_right_len[i][j].right;
+        nb_gear += 1;
+        prod *= get_integer(i, j - left_right_len[i][j].left +1);
+        j += left_right_len[i][j].right; // skip the rest of this integer
       }
       j++;
     }
   }
-
-  int nb_gear = 0;
-  int prod = 1;
-  for (int i = max(0, lgn-1); i <= min(NB_LGN-1, lgn+1); i++)
-    for (int j = max(0, col-1); j <= min(NB_COL-1, col+1); j++)
-      if (has_int[i-lgn+1][j-col+1]) {
-        nb_gear += 1;
-        int start = j - left_right_len[i][j].left +1;
-        prod *= get_integer(i, start);
-      }
   
   if (nb_gear != 2) return 0;
   else              return prod;
