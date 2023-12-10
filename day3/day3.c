@@ -94,7 +94,7 @@ int get_integer(int lgn, int col) {
 
 
 /** Checks if a number has an adjacent non-digit non-dot char.
-    The number starts at pos lgn x col, has rightwise length len */
+    The number starts at pos lgn x col */
 bool is_part_number(int lgn, int col) {
   if (!is_digit(schematic[lgn][col])) return false;
 
