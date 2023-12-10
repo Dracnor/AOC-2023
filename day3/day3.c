@@ -129,9 +129,7 @@ int gear_ratio(int lgn, int col) {
   bool has_int[3][3] = {}; /* top left -- top center -- top right
                               left     --     X      -- right
                            bottom left -- bot center -- bottom right */
-// Rmk that if X has line lgn, top left has line i,
-// then top left is at index i-lgn+1. Same for all lines.
-// Same for columns.
+// schematic[i][j] is at has_int[i-row_X+1][j-col_X+1]
 
   for (int i = max(0, lgn-1); i <= min(NB_LGN-1, lgn+1); i++) {
     int j = max(0, col-1);
@@ -143,9 +141,7 @@ int gear_ratio(int lgn, int col) {
       j++;
     }
   }
-  
-  /* Ok that's starting to be waaaaaaaaay to long. 
-     C isn't the right tool. I need dictionnaries !! */
+
   int nb_gear = 0;
   int prod = 1;
   for (int i = max(0, lgn-1); i <= min(NB_LGN-1, lgn+1); i++)
