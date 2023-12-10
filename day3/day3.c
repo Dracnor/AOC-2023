@@ -2,15 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 
 
 char* const input_file = "input.txt";
 
-/* Hardcoded dimensions of my input.txt s*/
+/* Hardcoded dimensions of my input.txt */
 #define NB_LGN 140
 #define NB_COL 140
-char schematic[NB_LGN][NB_COL];
 
+char schematic[NB_LGN][NB_COL];
 
 void fill_schematic(void) {
   FILE* fptr = fopen(input_file, "r");
@@ -32,6 +33,8 @@ void fill_schematic(void) {
 }
 
 
+/* 4 self-explanatory utilitaries */
+
 int min(int a, int b) {
   return a < b ? a : b;
 }
@@ -46,18 +49,57 @@ bool is_symbol(char c) {
 }
 
 
-/** Returns the length of the integer starting at lgn x col.
-    Returns 0 if no integer starts there */
-int integer_length(int lgn, int col) {
+/* Compute the leftwise and rightwise lenghts of schematic integers */
+// EXAMPLE : "abcd", starting from 'c' : leftwise len = 3, rightise len = 2
+
+typedef struct paire_s {int left; int right;} paire;
+
+paire left_right_len[NB_LGN][NB_COL]; 
+  /* the integer at schematic[i][j] 
+     extends for len.left char to the left (includind j),
+     and to len.right char to the right (excluding j) */
+  
+/** Computes the leftand right-wise lenghts of lgn x col*/
+void compute_left_right(int lgn, int col) {
   int l = 0;
-  while (col + l < NB_COL && is_digit(schematic[lgn][col+l])) l++;
-  return l;
+  while (col - l >= 0 && is_digit(schematic[lgn][col-l])) l++;
+  
+  int r = 0;
+  while (col + r < NB_COL && is_digit(schematic[lgn][col+r])) r++;
+
+  left_right_len[lgn][col].left = l;
+  left_right_len[lgn][col].right = r;
+}
+
+/** Comptes the left and right-wise lengths of all coordinates*/
+void fill_left_right_len(void) {
+  for (int lgn = 0; lgn < NB_LGN; lgn++)
+    for (int col = 0; col < NB_COL; col++)
+      compute_left_right(lgn, col);
+}
+
+
+/** Returns the integer at lgn x col. If no integer there, returns 0. */
+int get_integer(int lgn, int col) {
+  int start = col - left_right_len[lgn][col].left +1;
+  int len = left_right_len[lgn][start].right;
+
+  int integer = 0;
+  for (int j = 0; j < len; j++) {
+    integer *=10;
+    integer += schematic[lgn][start+j] - '0';
+  }
+  return integer;
 }
 
 
 /** Checks if a number has an adjacent non-digit non-dot char.
-    The number starts at pos lgn x col, and lasts for en characters */
-bool is_part_number(int lgn, int col, int len) {
+    The number starts at pos lgn x col, has rightwise length len */
+bool is_part_number(int lgn, int col) {
+  if (!is_digit(schematic[lgn][col])) return false;
+
+  assert(left_right_len[lgn][col].left == 1); // to help me debug
+  int len = left_right_len[lgn][col].right;
   for (int i = max(0, lgn-1); i <= min(NB_LGN-1, lgn+1); i++) {
     for (int j = max(0, col-1); j <= min(NB_LGN-1, col+len); j++) {
       if (is_symbol(schematic[i][j])) return true;
@@ -67,79 +109,52 @@ bool is_part_number(int lgn, int col, int len) {
 }
 
 
-/** I think there's better out there. This works. Q&D. */
-int string_to_int(int lgn, int col, int len) {
-  int integer = 0;
-  for (int k = 0; k < len; k++) {
-    integer *=10;
-    integer += schematic[lgn][col+k] - '0';
-  }
-  return integer;
-}
-
-
 int part1(void) {
   int sum = 0;
   for (int lgn = 0; lgn < NB_LGN; lgn++) {
     int col = 0;
     while (col < NB_COL) {
-      int len = integer_length(lgn, col);
-      if (is_part_number(lgn, col, len)) sum += string_to_int(lgn, col, len);
-      col += len+1;
+      if (is_part_number(lgn, col)) sum += get_integer(lgn, col);
+      col += left_right_len[lgn][col].right + 1;
     }
   }
   return sum;
 }
 
-/** Returns the left-wise len of the int at lgn x col */
-int leftwise_integer_length(int lgn, int col) {
-  int l = 0;
-  while (col + l >= 0 && is_digit(schematic[lgn][col+l])) l--;
-  return l;
-}
 
+/* part 2 */
 
 /** Computes the gear ratio of lgn x col */
 int gear_ratio(int lgn, int col) {
-  bool has_int[3][3] = {};
+  bool has_int[3][3] = {}; /* top left -- top center -- top right
+                              left     --     X      -- right
+                           bottom left -- bot center -- bottom right */
+// Rmk that if X has line lgn, top left has line i,
+// then top left is at index i-lgn+1. Same for all lines.
+// Same for columns.
 
-  /* fst find adjacent cases with ints */
-  for (int i = -1; i < 2; i++)
-    for (int j = -1; j < 2; j++)
-      if (lgn+i >= 0 && lgn+i < NB_LGN && col+j >= 0 && col+j < NB_COL
-          && is_digit(schematic[lgn+i][col+j])
-         )
-        has_int[i+1][j+1] = true;
-  has_int[1][1] = false;
-
-  /* then, remove redundancy. */
-  for (int i = -1; i < 2; i += 2) { //  Only need upper and bottomer row.
-    if (lgn+i < 0 || lgn + i >= NB_LGN) continue;
-    for (int j = -1; j < 1; j += 1) { // only two fst columns
-      if (col+j < 0 || col+j >= NB_LGN) continue;
-      int len = integer_length(lgn+i, col+j);
-      if (j == -1) {                                  // INT - ? - ?
-        if (len >= 1) has_int[i+1][1] = false;        // INT - same INT - ?
-        if (len >= 2) has_int[i+1][2] = false;        // INT - same INT - same INT
+  for (int i = max(0, lgn-1); i <= min(NB_LGN-1, lgn+1); i++) {
+    int j = max(0, col-1);
+    while (j <= min(NB_COL-1, col +1)) {
+      if (is_digit(schematic[i][j])) {
+        has_int[i-lgn+1][j-col+1] = true;
+        j += left_right_len[i][j].right;
       }
-      if (j == 0 && len >=1) has_int[i+1][2] = false;     // ? - INT - same INT
+      j++;
     }
-  } 
+  }
   
   /* Ok that's starting to be waaaaaaaaay to long. 
      C isn't the right tool. I need dictionnaries !! */
   int nb_gear = 0;
   int prod = 1;
-  for (int i = -1; i < 2; i++)
-    for (int j = -1; j < 2; j++)
-      if (has_int[i+1][j+1]
-          && lgn+i >= 0 && lgn+i < NB_LGN && col+j >= 0 && col+j < NB_COL
-          ) {
+  for (int i = max(0, lgn-1); i <= min(NB_LGN-1, lgn+1); i++)
+    for (int j = max(0, col-1); j <= min(NB_COL-1, col+1); j++)
+      if (has_int[i-lgn+1][j-col+1]) {
         nb_gear += 1;
-        int start = col + j + leftwise_integer_length(lgn+i, col+j) + 1;
-        int len = integer_length(lgn+i, start);
-        prod *= string_to_int(lgn+i, start, len);
-      } 
+        int start = j - left_right_len[i][j].left +1;
+        prod *= get_integer(i, start);
+      }
   
   if (nb_gear != 2) return 0;
   else              return prod;
@@ -158,6 +173,7 @@ int part2() {
 
 int main(void) {
   fill_schematic();
+  fill_left_right_len();
 
   printf("%d\n", part1());
   printf("%d\n", part2());
